@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Details</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f0f8ff;
+            margin-top: 90px;
+        }
+        .fixed-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 10px 20px;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .back-button {
+            background-color: transparent;
+            border: none;
+            color: white;
+            font-size: 22px;
+            padding: 8px 15px;
+            text-decoration: none;
+        }
+        .back-button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        .container {
+            margin-top: 80px;
+        }
+        .card {
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            background-color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .download-btn {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .head-text{
+            font-size: 22px;
+            display: flex;
+            justify-content: center;
+        }
+        @media (max-width: 768px) {
+            .head-text {
+                font-size: 15px;
+            }
+        }
+        .custom-navbar {
+    padding-top: 20px;  /* Extra space above content */
+    padding-bottom: 20px; /* Extra space below content */
+}
+
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top custom-navbar">
+        <div class="container-fluid d-flex justify-content-center position-relative">
+            <a href="{{ url_for('home') }}" class="btn back-button position-absolute start-0">&#129120;</a>
+            <h2 class="text-white head-text m-0">Loan & Deposit Details</h2>
+        </div>
+    </nav>
+    
+    
+    
+
+    <div class="container">
+        <form method="POST" action="/loan_details">
+            <label for="username" class="form-label">Select User:</label>
+            <select name="username" id="username" class="form-select" required>
+                <option value="" disabled {% if not selected_user %}selected{% endif %}>Choose a user</option>
+                {% for user in users %}
+                <option value="{{ user.name }}" {% if selected_user == user.name %}selected{% endif %}>{{ user.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary mt-3">Fetch Details</button>
+        </form>
+
+        {% if loans or deposits %}
+        <h3 class="mt-4 text-center">Loan Details</h3>
+        <div class="row mt-3">
+            {% for loan in loans %}
+            <div class="col-md-4">
+                <div class="card mb-4 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ loan.name }}</h5>
+                        <p class="card-text"><strong>Amount:</strong> ₹{{ loan.amount }}</p>
+                        <p class="card-text"><strong>Issued At:</strong> {{ loan.created_at }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <h3 class="mt-4 text-center">Deposit Details</h3>
+        <div class="row mt-3">
+            {% for deposit in deposits %}
+            <div class="col-md-4">
+                <div class="card mb-4 shadow-sm">
+                    <div class="card-body">
+                        <p class="card-text"><strong>Loan Before:</strong> ₹{{ deposit.loan_before }}</p>
+                        <p class="card-text"><strong>Total Deposit:</strong> ₹{{ deposit.total_deposit }}</p>
+                        <p class="card-text"><strong>Loan Interest:</strong> ₹{{ deposit.loan_interest }}</p>
+                        <p class="card-text"><strong>Loan Repay Amount:</strong> ₹{{ deposit.extra_amount }}</p>
+                        <p class="card-text"><strong>Fixed Deposit:</strong> ₹{{ deposit.fixed_deposit }}</p>
+                        <p class="card-text"><strong>Loan Left:</strong> ₹{{ deposit.loan_after }}</p>
+                        <p class="card-text"><strong>Issued At:</strong> {{ deposit.created_at }}</p>
+                        <p class="card-text"><strong>Fine Applied:</strong> {{ deposit.fine_applied }}</p>
+                        <p class="card-text"><strong>Deposit Duration:</strong> {{ deposit.deposit_duration}}<strong> Days</strong></p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="download-btn">
+            <a href="{{ url_for('download_pdf', username=selected_user) }}" class="btn btn-success">Download Excel</a>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f8ff;
+        }
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        .custom-navbar {
+    padding-top: 20px;  /* Extra space above content */
+    padding-bottom: 20px; /* Extra space below content */
+}
+.head-text{
+            font-size: 22px;
+            display: flex;
+            justify-content: center;
+        }
+        @media (max-width: 768px) {
+            .head-text {
+                font-size: 15px;
+            }
+        }
+        .back-button {
+            background-color: transparent;
+            border: none;
+            color: white;
+            font-size: 22px;
+            padding: 8px 15px;
+            text-decoration: none;
+        }
+        .back-button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top custom-navbar">
+        <div class="container-fluid d-flex justify-content-center position-relative">
+            <a href="{{ url_for('home') }}" class="btn back-button position-absolute start-0">&#129120;</a>
+            <h2 class="text-white head-text m-0">Loan Deposit Login</h2>
+        </div>
+    </nav>
+
+    <div class="login-container">
+        <h3 class="text-center">Login</h3>
+        <form action="{{ url_for('admin_deposit_login') }}" method="POST">
+            {% if error %}
+                <div class="alert alert-danger text-center">
+            {{ error }}
+                </div>
+            {% endif %}
+
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" class="form-control" id="username" name="username" required>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Login</button>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

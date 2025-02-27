@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Delete Loan</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+    body {
+        margin-top: 90px;
+        background-color: #f0f8ff;
+    }
+    .custom-navbar {
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+    .head-text {
+        font-size: 22px;
+        display: flex;
+        justify-content: center;
+    }
+    @media (max-width: 768px) {
+        .head-text {
+            font-size: 15px;
+        }
+    }
+    .back-button {
+        background-color: transparent;
+        border: none;
+        color: white;
+        font-size: 22px;
+        padding: 8px 15px;
+        text-decoration: none;
+    }
+    .back-button:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 5px;
+    }
+</style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top custom-navbar">
+        <div class="container-fluid d-flex justify-content-center position-relative">
+            <a href="{{ url_for('home') }}" class="btn back-button position-absolute start-0">&#129120;</a>
+            <h2 class="text-white head-text m-0">Deposit Details</h2>
+        </div>
+    </nav>
+<div class="container mt-5">
+    <h2 class="text-center">Delete Loan</h2>
+
+    {% if message %}
+        <div class="alert alert-success text-center">{{ message }}</div>
+    {% endif %}
+
+    <!-- Select User -->
+    <form method="POST" class="mb-4">
+        <label for="user_id" class="form-label">Select User:</label>
+        <select name="user_id" class="form-select" required onchange="this.form.submit()">
+            <option value="">-- Select User --</option>
+            {% for user in users %}
+                <option value="{{ user.id }}" {% if user.id == request.form.user_id %}selected{% endif %}>
+                    {{ user.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </form>
+
+    {% if loans %}
+        <h4 class="mt-4">Loans for Selected User</h4>
+        <table class="table table-bordered table-striped text-center">
+            <thead class="table-dark">
+                <tr>
+                    <th>Loan ID</th>
+                    <th>Amount</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loan in loans %}
+                <tr>
+                    <td>{{ loan.id }}</td>
+                    <td>₹{{ loan.amount }}</td>
+                    <td>
+                        <!-- Delete Button Triggers Modal -->
+                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ loan.id }}">
+                            Delete
+                        </button>
+
+                        <!-- Bootstrap Modal for Confirmation -->
+                        <div class="modal fade" id="deleteModal{{ loan.id }}" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-danger text-white">
+                                        <h5 class="modal-title">Confirm Deletion</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to delete this loan?
+                                        <p><strong>Loan ID:</strong> {{ loan.id }}</p>
+                                        <p><strong>Amount:</strong> ₹{{ loan.amount }}</p>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <form method="POST">
+                                            <input type="hidden" name="delete_id" value="{{ loan.id }}">
+                                            <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- End Bootstrap Modal -->
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

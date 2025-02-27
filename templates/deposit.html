@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deposit System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let insertedAmountInput = document.getElementById("inserted_amount");
+            let usernameSelect = document.getElementById("username");
+            let depositDateInput = document.getElementById("deposit_date");
+            let depositDurationSelect = document.getElementById("deposit_duration");
+            let applyFineCheckbox = document.getElementById("apply_fine");
+            let form = document.getElementById("deposit_form");
+
+            // Restore selected user from localStorage
+            let savedUser = localStorage.getItem("selected_user");
+            if (savedUser) {
+                usernameSelect.value = savedUser;
+                fetchLoanDetails(); // Fetch loan details immediately
+            }
+
+            usernameSelect.addEventListener("change", function () {
+                localStorage.setItem("selected_user", this.value);
+                fetchLoanDetails();
+            });
+
+            depositDateInput.addEventListener("change", function () {
+                fetchLoanDetails(); // Fetch loan details when the date changes
+            });
+
+            depositDurationSelect.addEventListener("change", function () {
+                fetchLoanDetails(); // Fetch loan details when the duration changes
+            });
+
+            applyFineCheckbox.addEventListener("change", fetchLoanDetails); // Fetch loan details when checkbox state changes
+
+            insertedAmountInput.addEventListener("input", function () {
+                updateDisplay(); // Update deposit breakdown when deposit amount changes
+            });
+
+            form.addEventListener("submit", function (event) {
+                // Validate the inserted amount only when the form is submitted
+                if (!validateAmount()) {
+                    event.preventDefault(); // Prevent form submission if validation fails
+                }
+            });
+
+            function fetchLoanDetails() {
+                let username = usernameSelect.value;
+                let depositDate = depositDateInput.value;
+                let duration = depositDurationSelect.value;
+                let applyFine = applyFineCheckbox.checked; // Get the state of the checkbox
+
+                if (!username || !depositDate) {
+                    return; // Do not proceed if username or deposit date is missing
+                }
+
+                // Include the apply_fine state in the request
+                fetch(`/get_loan_details?username=${username}&deposit_date=${depositDate}&duration=${duration}&apply_fine=${applyFine}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Update UI with the fetched data
+                        document.getElementById("loan_amount_display").innerText = data.loan_amount.toFixed(2);
+                        document.getElementById("fixed_deposit_display").innerText = data.fixed_deposit.toFixed(2);
+                        document.getElementById("total_fixed_deposit_display").innerText = data.total_fixed_deposit.toFixed(2);
+                        document.getElementById("interest_display").innerText = data.interest.toFixed(2);
+                        document.getElementById("fine_display").innerText = data.fine.toFixed(2);
+                        document.getElementById("min_payment_display").innerText = data.min_payment.toFixed(2);
+                        document.getElementById("max_payment_display").innerText = (data.loan_amount + data.total_fixed_deposit + data.interest + data.fine).toFixed(2);
+                        document.getElementById("months_difference_display").innerText = data.months_difference;
+                        document.getElementById("total_months_due_display").innerText = data.total_months_due;
+
+                        // Update deposit breakdown
+                        updateDisplay(); // Ensure calculations update when data is fetched
+                    })
+                    .catch(error => console.error("Error fetching loan details:", error));
+            }
+
+            function updateDisplay() {
+                let insertedAmount = parseFloat(insertedAmountInput.value) || 0;
+                let loanAmount = parseFloat(document.getElementById("loan_amount_display").innerText) || 0;
+                let totalFixedDeposit = parseFloat(document.getElementById("total_fixed_deposit_display").innerText) || 0;
+                let interest = parseFloat(document.getElementById("interest_display").innerText) || 0;
+                let fine = parseFloat(document.getElementById("fine_display").innerText) || 0;
+
+                // Calculate Loan Repay and Loan Left
+                let loanRepay = insertedAmount - fine - interest - totalFixedDeposit;
+                let loanLeft = loanAmount - loanRepay;
+
+                // Ensure Loan Repay and Loan Left are not negative
+                loanRepay = Math.max(0, loanRepay);
+                loanLeft = Math.max(0, loanLeft);
+
+                // Update deposit breakdown
+                document.getElementById("breakdown_fixed_deposit").innerText = totalFixedDeposit.toFixed(2);
+                document.getElementById("breakdown_interest").innerText = interest.toFixed(2);
+                document.getElementById("breakdown_fine").innerText = fine.toFixed(2);
+                document.getElementById("breakdown_loan_repay").innerText = loanRepay.toFixed(2);
+                document.getElementById("breakdown_loan_left").innerText = loanLeft.toFixed(2);
+                document.getElementById("breakdown_total").innerText = (totalFixedDeposit + interest + fine + loanRepay).toFixed(2);
+
+                // Show or hide the fine row based on the checkbox state
+                let fineRow = document.getElementById("fine_row");
+                if (applyFineCheckbox.checked && fine > 0) {
+                    fineRow.style.display = "block"; // Show the fine row
+                } else {
+                    fineRow.style.display = "none"; // Hide the fine row
+                }
+            }
+
+            function validateAmount() {
+                let insertedAmount = parseFloat(insertedAmountInput.value) || 0;
+                let minPayment = parseFloat(document.getElementById("min_payment_display").innerText) || 0;
+                let maxPayment = parseFloat(document.getElementById("max_payment_display").innerText) || Infinity;
+
+                if (insertedAmount < minPayment) {
+                    alert(`Inserted amount must be at least ₹${minPayment}.`);
+                    return false;
+                }
+
+                if (insertedAmount > maxPayment) {
+                    alert(`Inserted amount cannot exceed ₹${maxPayment}.`);
+                    return false;
+                }
+
+                return true;
+            }
+        });
+    </script>
+    <style>
+        body {
+            margin-top: 90px;
+            background-color: #f0f8ff;
+        }
+        .custom-navbar {
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+        .head-text {
+            font-size: 22px;
+            display: flex;
+            justify-content: center;
+        }
+        @media (max-width: 768px) {
+            .head-text {
+                font-size: 15px;
+            }
+        }
+        .back-button {
+            background-color: transparent;
+            border: none;
+            color: white;
+            font-size: 22px;
+            padding: 8px 15px;
+            text-decoration: none;
+        }
+        .back-button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top custom-navbar">
+        <div class="container-fluid d-flex justify-content-center position-relative">
+            <a href="{{ url_for('home') }}" class="btn back-button position-absolute start-0">&#129120;</a>
+            <h2 class="text-white head-text m-0">Deposit</h2>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <h2 class="text-center">Add Deposit</h2>
+
+        {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+        {% if message %}
+            <div class="alert alert-success">{{ message }}</div>
+        {% endif %}
+
+        <form method="POST" id="deposit_form" class="card p-4 shadow">
+            <div class="mb-3">
+                <label class="form-label">Select User</label>
+                <select class="form-control" id="username" name="username" required>
+                    <option value="">-- Select User --</option>
+                    {% for user in users %}
+                        <option value="{{ user['name'] }}">{{ user['name'] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Deposit Date</label>
+                <input type="date" id="deposit_date" class="form-control" name="deposit_date" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Deposit Duration</label>
+                <select id="deposit_duration" class="form-control" name="duration" required>
+                    <option value="30">30 Days (1% Interest)</option>
+                    <option value="15">15 Days (0.5% Interest)</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Deposit Amount</label>
+                <input type="number" id="inserted_amount" class="form-control" name="inserted_amount" required>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="apply_fine" name="apply_fine">
+                <label class="form-check-label" for="apply_fine">Apply Fine for Late Payment</label>
+            </div>
+
+            <h5>Loan Details</h5>
+            <ul class="list-group mb-3">
+                <li class="list-group-item">Total Loan Amount: ₹<span id="loan_amount_display">0.00</span></li>
+                <li class="list-group-item">Fixed Deposit (Per Month): ₹<span id="fixed_deposit_display">0.00</span></li>
+                <li class="list-group-item">Total Fixed Deposit (All Months): ₹<span id="total_fixed_deposit_display">0.00</span></li>
+                <li class="list-group-item">Interest: ₹<span id="interest_display">0.00</span></li>
+                <li class="list-group-item">Fine for Late Payment: ₹<span id="fine_display">0.00</span></li>
+                <li class="list-group-item">Minimum Payment Required: ₹<span id="min_payment_display">0.00</span></li>
+                <li class="list-group-item">Maximum Payable Amount: ₹<span id="max_payment_display">0.00</span></li>
+                <li class="list-group-item">Months Difference: <span id="months_difference_display">0</span></li>
+                <li class="list-group-item">Total Months Due: <span id="total_months_due_display">0</span></li>
+            </ul>
+
+            <h5>Deposit Breakdown</h5>
+            <ul class="list-group mb-3">
+                <li class="list-group-item">Fixed Deposit: ₹<span id="breakdown_fixed_deposit">0.00</span></li>
+                <li class="list-group-item">Interest: ₹<span id="breakdown_interest">0.00</span></li>
+                <li class="list-group-item" id="fine_row" style="display: none;">Fine: ₹<span id="breakdown_fine">0.00</span></li>
+                <li class="list-group-item">Loan Repay: ₹<span id="breakdown_loan_repay">0.00</span></li>
+                <li class="list-group-item">Loan Left: ₹<span id="breakdown_loan_left">0.00</span></li>
+            </ul>
+
+            <button type="submit" class="btn btn-primary w-100">Add Deposit</button>
+        </form>
+    </div>
+</body>
+</html>
