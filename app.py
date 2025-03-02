@@ -13,7 +13,7 @@ from dateutil.relativedelta import relativedelta  # For month difference calcula
 
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)  
+app.secret_key = secrets.token_hex(16)
 USERNAME = "admin"
 PASSWORD = "password"
 
@@ -22,7 +22,7 @@ DB_CONFIG = {
     'host': 'localhost',
     'user': 'root',
     'password': 'Darshan@2003',  # Change this to your actual password
-    'database': 'acounthandle'  # Ensure this matches your actual database name
+    'database': 'Acounthandle'  # Ensure this matches your actual database name
 }
 
 # Function to connect to the database
@@ -56,7 +56,7 @@ def create_database():
     Balance_in_loan DECIMAL(10,2) NOT NULL,
     Free_balance DECIMAL(10,2) NOT NULL
 )
-                       
+
 """)
 
         # Create users table
@@ -103,13 +103,13 @@ def create_database():
     total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 )
-                       
+
 ''')
 
         conn.commit()
         cursor.close()
         conn.close()
-        
+
     except mysql.connector.Error as err:
         print(f"Error: {err}")
 
@@ -122,8 +122,8 @@ def home():
     cursor = conn.cursor(dictionary=True)
 
     query = """
-        SELECT 
-    users.name, 
+        SELECT
+    users.name,
     COALESCE(total_loans.total_amount, '-') AS loan_amount
 FROM users
 LEFT JOIN total_loans ON users.id = total_loans.user_id;
@@ -139,8 +139,6 @@ LEFT JOIN total_loans ON users.id = total_loans.user_id;
 
 @app.route('/add_loan', methods=['GET', 'POST'])
 def add_loan():
-    if 'add_loan_logged_in' not in session or not session['add_loan_logged_in']:
-        return redirect(url_for('loan_login'))
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -158,8 +156,8 @@ def add_loan():
         account_record = cursor.fetchone()
 
         if account_record:
-            free_balance = float(account_record['free_balance'])  
-            balance_in_loan = float(account_record['balance_in_loan'])  
+            free_balance = float(account_record['free_balance'])
+            balance_in_loan = float(account_record['balance_in_loan'])
         else:
             message = "Error: No account data found."
             return render_template('add_loan.html', users=users, free_balance=free_balance, message=message)
@@ -184,16 +182,16 @@ def add_loan():
                 total_loan_record = cursor.fetchone()
 
                 if total_loan_record:
-                    new_total = float(total_loan_record['total_amount']) + amount  
+                    new_total = float(total_loan_record['total_amount']) + amount
                     cursor.execute("UPDATE total_loans SET total_amount = %s WHERE user_id = %s", (new_total, user_id))
                 else:
                     cursor.execute("INSERT INTO total_loans (user_id, total_amount) VALUES (%s, %s)", (user_id, amount))
 
                 # Update Account table
-                new_free_balance = free_balance - amount  
-                new_balance_in_loan = balance_in_loan + amount  
+                new_free_balance = free_balance - amount
+                new_balance_in_loan = balance_in_loan + amount
 
-                cursor.execute("UPDATE Account SET free_balance = %s, balance_in_loan = %s LIMIT 1", 
+                cursor.execute("UPDATE Account SET free_balance = %s, balance_in_loan = %s LIMIT 1",
                                (new_free_balance, new_balance_in_loan))
 
                 # Commit transaction
@@ -212,16 +210,15 @@ def add_loan():
     conn.close()
     return render_template('add_loan.html', users=users, free_balance=free_balance, message=message)
 
+
+
 @app.route('/deposit', methods=['GET', 'POST'])
 def deposit():
-    if 'logged_in' not in session or not session['logged_in']:
-        return redirect(url_for('login'))
-
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    
+
     users = get_users()
-    message = session.pop('message', None)  
+    message = session.pop('message', None)
     error = None
     loan_amount = 0
     total_interest = 0
@@ -234,7 +231,7 @@ def deposit():
     if request.method == 'POST':
         username = request.form.get('username')
         inserted_amount = float(request.form.get('inserted_amount', 0))
-        duration = int(request.form.get('duration', 30))
+        duration = int(request.form.get('duration', 30))  # Default 30 days
         deposit_date_str = request.form.get('deposit_date')
         apply_fine = request.form.get('apply_fine') == 'on'  # Check if fine is applied
 
@@ -246,6 +243,7 @@ def deposit():
             if inserted_amount < 1000:
                 error = "Amount must be at least 1000"
             else:
+                # Fetch user
                 cursor.execute('SELECT * FROM users WHERE name = %s', (username,))
                 user = cursor.fetchone()
 
@@ -257,9 +255,9 @@ def deposit():
                     # Fetch loan amount
                     cursor.execute('SELECT total_amount FROM total_loans WHERE user_id = %s', (user_id,))
                     loan = cursor.fetchone()
-                    loan_amount = float(loan['total_amount']) if loan else 0.0
+                    loan_amount = round(float(loan['total_amount'])) if loan else 0.0
 
-                    # Fetch the last deposit date from the database
+                    # Fetch the last deposit date
                     cursor.execute('''
                         SELECT MAX(deposit_date) AS last_deposit_date
                         FROM deposits WHERE user_id = %s
@@ -267,55 +265,46 @@ def deposit():
                     last_deposit_data = cursor.fetchone()
                     last_deposit_date = last_deposit_data['last_deposit_date'] if last_deposit_data else None
 
-                    # Calculate the number of months between the last deposit date and the inserted date
-                    months_difference = 0
+                    # Loan Interest Calculation (from get_loan_details)
                     if last_deposit_date:
                         last_deposit_date = datetime.strptime(str(last_deposit_date), '%Y-%m-%d')
                         delta = relativedelta(deposit_date, last_deposit_date)
                         months_difference = delta.years * 12 + delta.months
                     else:
-                        # If no deposits found, calculate months from the first month of the current year
-                        first_month_of_year = datetime(deposit_date.year, 1, 1)  # January 1st of the current year
+                        first_month_of_year = datetime(deposit_date.year, 1, 1)
                         delta = relativedelta(deposit_date, first_month_of_year)
-                        months_difference = delta.years * 12 + delta.months
+                        months_difference = delta.years * 12 + delta.months + 1
 
-                    # Total months due includes the current month
-                    total_months_due = months_difference + 1
+                    total_months_due = max(1, months_difference)
 
                     # Fixed deposit per month
-                    fixed_deposit = 1000  # ₹1000 per month
-                    total_fixed_deposit = fixed_deposit * total_months_due  # Total fixed deposit for all months
+                    fixed_deposit = 1000
+                    total_fixed_deposit = fixed_deposit * total_months_due
 
-                    # Calculate interest based on deposit duration
+                    # Interest Calculation
                     interest_rate = 0.01 if duration == 30 else 0.005
-                    total_interest = loan_amount * interest_rate * total_months_due  # Interest for all months
+                    total_interest = round(loan_amount * interest_rate * total_months_due)
 
-                    # Fine Calculation (if deposit date is after the 13th of the next month and checkbox is checked)
+                    # Fine Calculation
                     fine = 0
                     if apply_fine:
                         if last_deposit_date:
-                            # Calculate the 13th of the next month after the last deposit date
                             next_month_13th = (last_deposit_date.replace(day=1) + timedelta(days=32)).replace(day=13)
-
-                            # If the current deposit date is after the 13th of the next month, calculate the fine
                             if deposit_date > next_month_13th:
                                 fine_days = (deposit_date - next_month_13th).days
-                                fine = fine_days * 10  # ₹10 fine per day
+                                fine = round(fine_days * 10)
                         else:
-                            # If no deposits found, calculate fine from the 13th of the first month of the current year
-                            first_month_13th = datetime(deposit_date.year, 1, 13)  # January 13th of the current year
-
-                            # If the current deposit date is after the 13th of the first month, calculate the fine
+                            first_month_13th = datetime(deposit_date.year, 1, 13)
                             if deposit_date > first_month_13th:
                                 fine_days = (deposit_date - first_month_13th).days
-                                fine = fine_days * 10  # ₹10 fine per day
+                                fine = round(fine_days * 10)
 
-                    # Minimum required payment includes fine and total fixed deposit
-                    min_payment = total_fixed_deposit + total_interest + fine
+                    # Minimum required payment
+                    min_payment = round(total_fixed_deposit + total_interest + fine)
 
                     # Extra Amount & Loan Adjustment
-                    extra_amount = max(0, inserted_amount - min_payment)
-                    remaining_loan = max(0, loan_amount - extra_amount)
+                    extra_amount = round(max(0, inserted_amount - min_payment))
+                    remaining_loan = round(max(0, loan_amount - extra_amount))
 
                     if loan:
                         cursor.execute('UPDATE total_loans SET total_amount = %s WHERE user_id = %s', (remaining_loan, user_id))
@@ -335,7 +324,7 @@ def deposit():
                         new_balance_in_loan = float(balance_in_loan) - extra_amount
 
                         cursor.execute('''
-                            UPDATE Account 
+                            UPDATE Account
                             SET total_balance = %s, free_balance = %s, balance_in_loan = %s
                             LIMIT 1
                         ''', (new_total_balance, new_free_balance, new_balance_in_loan))
@@ -351,7 +340,7 @@ def deposit():
                         # Store success message in session before redirecting
                         session['message'] = f"Deposit added successfully for {total_months_due} months! ✅ (Interest: ₹{total_interest:.2f}, Fine: ₹{fine:.2f})"
 
-                        return redirect(url_for('deposit'))  
+                        return redirect(url_for('deposit'))
 
     cursor.close()
     conn.close()
@@ -360,6 +349,7 @@ def deposit():
                            loan_amount=loan_amount, interest=total_interest, min_payment=min_payment,
                            remaining_loan=remaining_loan, extra_amount=extra_amount, fine=fine,
                            months_difference=months_difference)
+
 
 @app.route('/loans', methods=['GET'])
 def loans():
@@ -445,7 +435,7 @@ def generate_loans_pdf():
 def get_loan_details():
     username = request.args.get('username')
     duration = int(request.args.get('duration', 30))  # Default to 30 days
-    deposit_date_str = request.args.get('deposit_date')  # Pass deposit date from frontend
+    deposit_date_str = request.args.get('deposit_date')  # Passed deposit date from frontend
     apply_fine = request.args.get('apply_fine', 'false').lower() == 'true'  # Check if fine is applied
 
     if not username or not deposit_date_str:
@@ -468,7 +458,7 @@ def get_loan_details():
     # Fetch loan amount
     cursor.execute('SELECT total_amount FROM total_loans WHERE user_id = %s', (user_id,))
     loan = cursor.fetchone()
-    loan_amount = float(loan['total_amount']) if loan else 0.0
+    loan_amount = round(float(loan['total_amount'])) if loan else 0
 
     # Fetch the last deposit date from the database
     cursor.execute('''
@@ -478,24 +468,25 @@ def get_loan_details():
     last_deposit_data = cursor.fetchone()
     last_deposit_date = last_deposit_data['last_deposit_date'] if last_deposit_data else None
 
-    # Calculate the number of months between the last deposit date and the inserted date
-    months_difference = 0
+    # Convert string to datetime
     current_deposit_date = datetime.strptime(deposit_date_str, '%Y-%m-%d')
 
     if last_deposit_date:
         last_deposit_date = datetime.strptime(str(last_deposit_date), '%Y-%m-%d')
 
-        # Calculate the difference in months
+        # Calculate difference in months
         delta = relativedelta(current_deposit_date, last_deposit_date)
         months_difference = delta.years * 12 + delta.months
-    else:
-        # If no deposits found, calculate months from the first month of the current year
-        first_month_of_year = datetime(current_deposit_date.year, 1, 1)  # January 1st of the current year
-        delta = relativedelta(current_deposit_date, first_month_of_year)
-        months_difference = delta.years * 12 + delta.months
 
-    # Total months due includes the current month
-    total_months_due = months_difference + 1
+        # Ensure months_difference is at least 1 for every deposit
+        total_months_due = max(1, months_difference)
+
+    else:
+        # If no previous deposit, count from the first month of the current year
+        first_month_of_year = datetime(current_deposit_date.year, 1, 1)
+        delta = relativedelta(current_deposit_date, first_month_of_year)
+        months_difference = delta.years * 12 + delta.months + 1  # Include current month
+        total_months_due = months_difference  # Keep them the same
 
     # Fixed deposit per month
     fixed_deposit = 1000  # ₹1000 per month
@@ -503,7 +494,7 @@ def get_loan_details():
 
     # Calculate interest based on deposit duration
     interest_rate = 0.01 if duration == 30 else 0.005
-    total_interest = loan_amount * interest_rate * total_months_due  # Interest for all months
+    total_interest = round(loan_amount * interest_rate * total_months_due)  # Interest for all months
 
     # Fine Calculation (if deposit date is after the 13th of the next month and checkbox is checked)
     fine = 0
@@ -515,7 +506,7 @@ def get_loan_details():
             # If the current deposit date is after the 13th of the next month, calculate the fine
             if current_deposit_date > next_month_13th:
                 fine_days = (current_deposit_date - next_month_13th).days
-                fine = fine_days * 10  # ₹10 fine per day
+                fine = round(fine_days * 10)  # ₹10 fine per day
         else:
             # If no deposits found, calculate fine from the 13th of the first month of the current year
             first_month_13th = datetime(current_deposit_date.year, 1, 13)  # January 13th of the current year
@@ -523,10 +514,12 @@ def get_loan_details():
             # If the current deposit date is after the 13th of the first month, calculate the fine
             if current_deposit_date > first_month_13th:
                 fine_days = (current_deposit_date - first_month_13th).days
-                fine = fine_days * 10  # ₹10 fine per day
+                fine = round(fine_days * 10) 
+ # ₹10 fine per day
 
     # Minimum required payment includes fine and total fixed deposit
-    min_payment = total_fixed_deposit + total_interest + fine
+    min_payment = round(total_fixed_deposit + total_interest + fine)
+
 
     cursor.close()
     conn.close()
@@ -548,13 +541,13 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        
+
         if username == USERNAME and password == PASSWORD:
             session['logged_in'] = True
             return redirect(url_for('deposit'))
         else:
             error = "Invalid username or password. Please try again."
-    
+
     return render_template('login.html', error=error)
 
 
@@ -564,13 +557,13 @@ def loan_login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        
+
         if username == USERNAME and password == PASSWORD:
             session['add_loan_logged_in'] = True
             return redirect(url_for('add_loan'))
         else:
             error = "Invalid username or password. Please try again."
-    
+
     return render_template('loan_login.html',error=error)
 
 @app.route('/loan_details', methods=['GET', 'POST'])
@@ -584,7 +577,7 @@ def loan_details():
 
     loans = []
     deposits = []
-    selected_user = None  
+    selected_user = None
 
     if request.method == 'POST':
         username = request.form['username']
@@ -608,7 +601,7 @@ def loan_details():
 
                 # Fetch deposit details
                 cursor.execute("""
-                    SELECT loan_before, total_deposit, loan_interest, extra_amount, 
+                    SELECT loan_before, total_deposit, loan_interest, extra_amount,
                            fixed_deposit, loan_after, created_at,deposit_duration,fine_applied
                     FROM deposits
                     WHERE user_id = %s
@@ -636,13 +629,13 @@ def download_pdf(username):
 
     # Fetch deposit details for the user
     cursor.execute("""
-        SELECT loan_before as Existing_loan, total_deposit, loan_interest, extra_amount as Loan_repay, 
-               fixed_deposit, loan_after as Loan_left, deposit_date as Deposit_date, fine_applied, 
+        SELECT loan_before as Existing_loan, total_deposit, loan_interest, extra_amount as Loan_repay,
+               fixed_deposit, loan_after as Loan_left, deposit_date as Deposit_date, fine_applied,
                deposit_duration as Deposit_duration_Days
-        FROM deposits 
+        FROM deposits
         WHERE user_id = (SELECT id FROM users WHERE name = %s)
     """, (username,))
-    
+
     deposit_data = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -660,7 +653,7 @@ def download_pdf(username):
         "Existing Loan", "Installment", "Interest", "Loan Repay", "Fixed Deposit",
         "Loan Left", "Deposit Date", "Fine", "Duration (Days)"
     ]
-    
+
     col_widths = [30, 30, 30, 30, 30, 30, 30, 35, 35]  # Adjusted for landscape mode
     total_table_width = sum(col_widths)  # Total width of the table
 
@@ -706,41 +699,40 @@ def download_pdf(username):
 def get_deposits():
     month = request.args.get('month')
     year = request.args.get('year')
-    
+
     if not month or not year:
         return render_template('deposits.html', error='Both month and year are required')
-    
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         query = """
-            SELECT 
-    u.id AS user_id, 
-    u.name, 
-    COALESCE(d.id, '-') AS id, 
-    COALESCE(d.loan_before, '-')AS loan_before ,
-    COALESCE(d.total_deposit, '-') AS total_deposit,
-    COALESCE(d.loan_interest, '-') AS loan_interest ,
-    COALESCE(d.fine_applied, '-') AS fine_applied,
-    COALESCE(d.extra_amount, '-') AS extra_amount,
-    COALESCE(d.loan_after, '-') AS loan_after,
-    COALESCE(d.deposit_date, '-') AS deposit_date,
-    COALESCE(d.deposit_duration, '-') AS deposit_duration
+SELECT
+    u.id AS user_id,
+    u.name AS name,
+    COALESCE(d.loan_before, tl.total_amount, 0) AS loan_before,
+    COALESCE(d.total_deposit, 0) AS total_deposit,
+    COALESCE(d.loan_interest, 0) AS loan_interest,
+    COALESCE(d.fine_applied, 0) AS fine_applied,
+    COALESCE(d.extra_amount, 0) AS extra_amount,
+    COALESCE(d.loan_after, tl.total_amount, 0) AS loan_after,
+    COALESCE(d.fixed_deposit, 0) AS fixed_deposit,
+    COALESCE(d.deposit_date, '-') AS deposit_date
 FROM users u
-LEFT JOIN deposits d 
-    ON u.id = d.user_id 
-    AND YEAR(d.deposit_date) = %s 
+LEFT JOIN deposits d
+    ON u.id = d.user_id
+    AND YEAR(d.deposit_date) = %s
     AND MONTH(d.deposit_date) = %s
+LEFT JOIN total_loans tl
+    ON u.id = tl.user_id
 ORDER BY u.id;
-
-        """
-        # Note: Order of parameters is (year, month) since we're comparing YEAR() and MONTH().
+"""
         cursor.execute(query, (year, month))
         results = cursor.fetchall()
-        
+
         cursor.close()
         conn.close()
-        
+
         return render_template('deposits.html', results=results, month=month, year=year)
     except Exception as e:
         return render_template('deposits.html', error=str(e))
@@ -788,26 +780,29 @@ def generate_pdf():
 
         # Fetch deposit details
         query = """
-        SELECT 
-            u.id AS user_id, 
-            u.name AS member_name, 
-            COALESCE(d.loan_before, 0) AS loan_amount,
-            COALESCE(d.total_deposit, 0) AS installment,
-            COALESCE(d.loan_interest, 0) AS loan_interest,
-            COALESCE(d.fine_applied, 0) AS fine,
-            COALESCE(d.extra_amount, 0) AS loan_repay,
-            COALESCE(d.loan_after, 0) AS loan_remaining,
-            COALESCE(d.fixed_deposit, 0) AS deposit_duration,
-            COALESCE(d.deposit_date, '-') AS deposit_date
-        FROM users u
-        LEFT JOIN deposits d 
-            ON u.id = d.user_id 
-            AND YEAR(d.deposit_date) = %s 
-            AND MONTH(d.deposit_date) = %s
-        ORDER BY u.id;
-        """
+SELECT
+    u.id AS user_id,
+    u.name AS member_name,
+    COALESCE(d.loan_before, tl.total_amount, 0) AS loan_amount,
+    COALESCE(d.total_deposit, 0) AS installment,
+    COALESCE(d.loan_interest, 0) AS loan_interest,
+    COALESCE(d.fine_applied, 0) AS fine,
+    COALESCE(d.extra_amount, 0) AS loan_repay,
+    COALESCE(d.loan_after, tl.total_amount, 0) AS loan_remaining,
+    COALESCE(d.fixed_deposit, 0) AS deposit_duration,
+    COALESCE(d.deposit_date, '-') AS deposit_date
+FROM users u
+LEFT JOIN deposits d
+    ON u.id = d.user_id
+    AND YEAR(d.deposit_date) = %s
+    AND MONTH(d.deposit_date) = %s
+LEFT JOIN total_loans tl
+    ON u.id = tl.user_id
+ORDER BY u.id;
+"""
         cursor.execute(query, (year, month))
         results = cursor.fetchall()
+
 
         # Fetch account details
         cursor.execute("SELECT total_balance, balance_in_loan, free_balance FROM Account LIMIT 1")
@@ -966,8 +961,7 @@ def generate_pdf():
 
 @app.route('/delete_deposit', methods=['GET', 'POST'])
 def delete_deposit():
-    if 'add_admin_logged_in' not in session or not session['add_admin_logged_in']:
-        return redirect(url_for('admin_deposit_login'))
+
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -975,8 +969,8 @@ def delete_deposit():
     error = None
     message = None
     deposits = []
-    users = []  
-    preview_data = None  
+    users = []
+    preview_data = None
 
     # Fetch all users for dropdown selection
     cursor.execute("SELECT id, name FROM users")
@@ -1017,7 +1011,7 @@ def delete_deposit():
                 loan_before = float(deposit['loan_before'])
 
                 new_total_loans = loan_before
-                cursor.execute('UPDATE total_loans SET total_amount = %s WHERE user_id = %s', 
+                cursor.execute('UPDATE total_loans SET total_amount = %s WHERE user_id = %s',
                                (new_total_loans, user_id))
 
                 cursor.execute("SELECT total_balance, free_balance, balance_in_loan FROM Account LIMIT 1")
@@ -1029,8 +1023,8 @@ def delete_deposit():
                     new_balance_in_loan = float(account['balance_in_loan']) + extra_amount
 
                     cursor.execute('''
-                        UPDATE Account 
-                        SET total_balance = %s, free_balance = %s, balance_in_loan = %s 
+                        UPDATE Account
+                        SET total_balance = %s, free_balance = %s, balance_in_loan = %s
                         LIMIT 1
                     ''', (new_total_balance, new_free_balance, new_balance_in_loan))
 
@@ -1057,21 +1051,20 @@ def delete_deposit():
     cursor.close()
     conn.close()
 
-    return render_template('delete_deposit.html', users=users, deposits=deposits, preview_data=preview_data, 
+    return render_template('delete_deposit.html', users=users, deposits=deposits, preview_data=preview_data,
                            message=message, error=error)
 
 
 @app.route('/delete_loan', methods=['GET', 'POST'])
 def delete_loan():
-    if 'add_loans_logged_in' not in session or not session['add_loans_logged_in']:
-        return redirect(url_for('admin_loans_login'))
+
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     message = session.pop('message', None)  # Retrieve and clear message after redirect
-    users = []  
-    loans = []  
+    users = []
+    loans = []
 
     # Fetch users for dropdown selection
     cursor.execute("SELECT id, name FROM users")
@@ -1111,7 +1104,7 @@ def delete_loan():
                 new_free_balance = float(account['free_balance']) + loan_amount
                 new_balance_in_loan = max(0, float(account['balance_in_loan']) - loan_amount)  # Prevent negative values
 
-                cursor.execute("UPDATE Account SET free_balance = %s, balance_in_loan = %s LIMIT 1", 
+                cursor.execute("UPDATE Account SET free_balance = %s, balance_in_loan = %s LIMIT 1",
                                (new_free_balance, new_balance_in_loan))
 
             # Delete loan record
@@ -1134,13 +1127,13 @@ def admin_deposit_login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        
+
         if username == 'ArunC' and password == 'Arun@123Chouthai':
             session['add_admin_logged_in'] = True
             return redirect(url_for('delete_deposit'))
         else:
             error = "Invalid username or password. Please try again."
-    
+
     return render_template('admin_deposit_login.html',error=error)
 
 @app.route('/admin_loans_login', methods=['GET', 'POST'])
@@ -1149,13 +1142,13 @@ def admin_loans_login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        
+
         if username == 'ArunC' and password == 'Arun@123Chouthai':
             session['add_loans_logged_in'] = True
             return redirect(url_for('delete_loan'))
         else:
             error = "Invalid username or password. Please try again."
-    
+
     return render_template('admin_loan_login.html',error=error)
 
 if __name__ == '__main__':

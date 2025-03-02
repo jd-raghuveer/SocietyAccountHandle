@@ -106,14 +106,14 @@
           <table class="table table-bordered table-striped">
             <thead class="table-dark">
               <tr>
-                <th>User Name</th>
-                <th>Loan Before</th>
+                <th>Member Name</th>
+                <th>LoanAmount</th>
                 <th>Total Deposit</th>
-                <th>Fixed Deposit</th>
+                <th>Shares</th>
                 <th>Loan Interest</th>
-                <th>Fine Applied</th>
-                <th>Extra Amount</th>
-                <th>Deposit Duration(Days)</th>
+                <th>Fine </th>
+                <th>Installment</th>
+                <th>Remaining Loan</th>
                 <th>Deposit Date</th>
               </tr>
             </thead>
@@ -127,7 +127,7 @@
                   <td>{{ row.loan_interest }}</td>
                   <td>{{ row.fine_applied }}</td>
                   <td>{{ row.extra_amount }}</td>
-                  <td>{{ row.deposit_duration }}</td>
+                  <td>{{ row.loan_after}}</td>
                   <td>{{ row.deposit_date }}</td>
                 </tr>
               {% endfor %}
@@ -141,7 +141,7 @@
             If you want to generate an Excel file, rename it back to /generate_excel
             or if you want to generate PDF, keep /generate_pdf 
           -->
-          <a href="/generate_pdf?month={{ month }}&year={{ year }}" class="btn btn-success">Generate PDF</a>
+          <a href="/generate_pdf?month={{ month }}&year={{ year }}" class="btn btn-success" style="margin-bottom: 30px;">Generate PDF</a>
         </div>
       </div>
     {% endif %}
